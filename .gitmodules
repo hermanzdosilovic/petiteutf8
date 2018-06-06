@@ -1,0 +1,3 @@
+[submodule "PetiteUtf8Test/Dependencies/Catch2"]
+	path = PetiteUtf8Test/Dependencies/Catch2
+	url = https://github.com/catchorg/Catch2.git
