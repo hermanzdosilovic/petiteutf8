@@ -33,32 +33,53 @@ namespace petiteutf8::utf8
 template< typename CharType = char16_t >
 std::string encode( std::basic_string< CharType > const & s )
 {
-    std::string utf8;
-
-    for ( CharType const & c1 : s )
+    std::size_t capacity{ 0 };
+    for ( CharType const & c : s )
     {
-        char32_t c{ static_cast< char32_t >( c1 ) };
-        if ( c < 0x80ul )
+        if ( c < 0x80 )
         {
-            utf8 += static_cast< char >( c );
+            capacity += 1;
         }
-        else if ( c < 0x800ul )
+        else if ( c < 0x800 )
         {
-            utf8 += static_cast< char >( 0xC0ul | ( ( c >> 6ul ) & 0x1Ful ) );
-            utf8 += static_cast< char >( 0x80ul | ( c & 0x3Ful ) );
+            capacity += 2;
         }
-        else if ( c < 0x10000ul )
+        else if ( c < 0x10000 )
         {
-            utf8 += static_cast< char >( 0xE0ul | ( ( c >> 12ul ) & 0xFul  ) );
-            utf8 += static_cast< char >( 0x80ul | ( ( c >> 6ul  ) & 0x3Ful ) );
-            utf8 += static_cast< char >( 0x80ul | ( c & 0x3Ful ) );
+            capacity += 3;
         }
         else
         {
-            utf8 += static_cast< char >( 0xF0ul | ( ( c >> 18ul ) & 0x7ul  ) );
-            utf8 += static_cast< char >( 0x80ul | ( ( c >> 12ul ) & 0x3Ful ) );
-            utf8 += static_cast< char >( 0x80ul | ( ( c >> 6ul  ) & 0x3Ful ) );
-            utf8 += static_cast< char >( 0x80ul | ( c & 0x3Ful ) );
+            capacity += 4;
+        }
+    }
+
+    std::string utf8;
+    utf8.reserve( capacity );
+
+    for ( CharType const & c : s )
+    {
+        if ( c < 0x80 )
+        {
+            utf8 += static_cast< char >( c );
+        }
+        else if ( c < 0x800 )
+        {
+            utf8 += static_cast< char >( 0xC0 | ( ( c >> 6 ) & 0x1F ) );
+            utf8 += static_cast< char >( 0x80 | ( c & 0x3F ) );
+        }
+        else if ( c < 0x10000 )
+        {
+            utf8 += static_cast< char >( 0xE0 | ( ( c >> 12 ) & 0xF  ) );
+            utf8 += static_cast< char >( 0x80 | ( ( c >> 6  ) & 0x3F ) );
+            utf8 += static_cast< char >( 0x80 | ( c & 0x3F ) );
+        }
+        else
+        {
+            utf8 += static_cast< char >( 0xF0 | ( ( c >> 18 ) & 0x7  ) );
+            utf8 += static_cast< char >( 0x80 | ( ( c >> 12 ) & 0x3F ) );
+            utf8 += static_cast< char >( 0x80 | ( ( c >> 6  ) & 0x3F ) );
+            utf8 += static_cast< char >( 0x80 | ( c & 0x3F ) );
         }
     }
 
@@ -68,44 +89,58 @@ std::string encode( std::basic_string< CharType > const & s )
 template< typename CharType >
 std::basic_string< CharType > decode( std::string const & s )
 {
-    std::basic_string< CharType > decoded;
-
-    for ( std::size_t i{ 0 }; i < s.length(); )
+    std::size_t capacity{ 0 };
+    for ( std::size_t i{ 0 }; i < s.length(); ++capacity )
     {
-        char32_t c{ static_cast< unsigned char >( s[ i ] ) };
-        if ( ( c & 0x80ul ) == 0x0ul )
+        auto c{ static_cast< CharType >( s[ i ] ) };
+        if ( (c & 0x80 ) == 0x0 )
         {
-            decoded += static_cast< CharType >( c );
             i += 1;
         }
-        else if ( ( c & 0xE0ul ) == 0xC0ul )
+        else if ( ( c & 0xE0 ) == 0xC0 )
         {
-            decoded += static_cast< CharType >
-            (
-                ( ( c & 0x1Ful ) << 6ul ) |
-                ( static_cast< unsigned char >( s[ i + 1 ] ) & 0x3Ful )
-            );
             i += 2;
         }
-        else if ( ( c & 0xF0ul ) == 0xE0ul )
+        else if ( ( c & 0xF0 ) == 0xE0 )
         {
-            decoded += static_cast< CharType >
-            (
-                ( ( c & 0xFul ) << 12ul ) |
-                ( ( static_cast< unsigned char >( s[ i + 1 ] ) & 0x3Ful ) << 6ul ) |
-                ( ( static_cast< unsigned char >( s[ i + 2 ] ) & 0x3Ful ) )
-            );
             i += 3;
         }
         else
         {
-            decoded += static_cast< CharType >
-            (
-                ( ( c & 0x7ul ) << 18ul ) |
-                ( ( static_cast< unsigned char >( s[ i + 1 ] ) & 0x3Ful ) << 12ul ) |
-                ( ( static_cast< unsigned char >( s[ i + 2 ] ) & 0x3Ful ) << 6ul  ) |
-                ( ( static_cast< unsigned char >( s[ i + 3 ] ) & 0x3Ful ) )
-            );
+            i += 4;
+        }
+    }
+
+    std::basic_string< CharType > decoded;
+    decoded.reserve( capacity );
+
+    for ( std::size_t i{ 0 }; i < s.length(); )
+    {
+        auto c{ static_cast< CharType >( s[ i ] ) };
+        if ( ( c & 0x80 ) == 0x0 )
+        {
+            decoded += c;
+            i += 1;
+        }
+        else if ( ( c & 0xE0 ) == 0xC0 )
+        {
+            decoded += ( ( c & 0x1F ) << 6 ) |
+                       ( static_cast< CharType >( s[ i + 1 ] ) & 0x3F );
+            i += 2;
+        }
+        else if ( ( c & 0xF0 ) == 0xE0 )
+        {
+            decoded += ( ( c & 0xF ) << 12 ) |
+                       ( ( static_cast< CharType >( s[ i + 1 ] ) & 0x3F ) << 6 ) |
+                       ( ( static_cast< CharType >( s[ i + 2 ] ) & 0x3F )      );
+            i += 3;
+        }
+        else
+        {
+            decoded += ( ( c & 0x7 ) << 18 ) |
+                       ( ( static_cast< CharType >( s[ i + 1 ] ) & 0x3F ) << 12 ) |
+                       ( ( static_cast< CharType >( s[ i + 2 ] ) & 0x3F ) << 6  ) |
+                       ( ( static_cast< CharType >( s[ i + 3 ] ) & 0x3F )       );
             i += 4;
         }
     }
