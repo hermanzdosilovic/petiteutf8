@@ -86,7 +86,7 @@ std::string encode( std::basic_string< CharType > const & s )
     return utf8;
 }
 
-template< typename CharType >
+template< typename CharType = char16_t >
 std::basic_string< CharType > decode( std::string const & s )
 {
     std::size_t capacity{ 0 };
